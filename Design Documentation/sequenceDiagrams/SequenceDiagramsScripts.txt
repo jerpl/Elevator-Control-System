@@ -1,0 +1,522 @@
+3004 A3 sequence diagrams scripts, and DESCRIPTION OF EACH
+
+
+				============NUMBER 1: BASE CASE============
+
+DESCRIPTION: This sequence diagram covers the main sucsess scenario where a passenger requests an elevator, and the elevator services the request without errors.
+
+
+
+title ECS Sequence Diagram 1 - Base Case
+
+participant aPassenger
+participant aFloorButton
+participant aDestButton
+participant theMainWindow
+participant theMainWindowUI
+participant aFloorSensor
+participant aTimer
+participant theQECS
+participant anElevator
+participant aFloor
+participant aBell
+participant aFloorDoor
+participant anElevatorDoor
+
+
+
+activecolor #black
+
+//part 1, requesting an elevator
+
+entryspacing 0.8
+aPassenger->aFloorButton: press()
+activate aFloorButton
+aFloorButton->theMainWindowUI:switchOn()
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+
+
+aFloorButton->theMainWindow: requestUp (floorNum, direction)
+deactivate aFloorButton
+activate theMainWindow
+theMainWindow->theQECS: allocateCar (floorNum)
+deactivate theMainWindow
+activate theQECS
+
+theQECS->anElevator: addDest(floorNum)
+activate anElevator
+deactivateafter anElevator
+theQECS->theQECS:allocateCar()
+theQECS->theQECS:moveFromFloor(index,dir)
+theQECS->anElevator:start(dir)
+activate anElevator
+deactivateafter anElevator
+theQECS->aFloorSensor:start()
+activate aFloorSensor
+deactivateafter aFloorSensor
+deactivate theQECS
+
+aFloorSensor->theQECS: timeout ()
+activate aFloorSensor
+deactivateafter aFloorSensor
+activate theQECS
+theQECS->theQECS:floorAndDisplayUpdate()
+theQECS->anElevator:updateLocation()
+activate anElevator
+deactivateafter anElevator
+theQECS->theMainWindow:uiUpdateDisplay()
+activate theMainWindow
+deactivate theQECS
+theMainWindow->theMainWindowUI:updateDisplay()
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+
+
+
+//part 2, elevator heading to requested floor
+
+aFloorSensor->theQECS: timeout ()
+activate aFloorSensor
+deactivateafter aFloorSensor
+activate theQECS
+theQECS->theQECS:floorAndDisplayUpdate()
+theQECS->anElevator:updateLocation()
+activate anElevator
+deactivateafter anElevator
+theQECS->theMainWindow:uiUpdateDisplay()
+activate theMainWindow
+deactivate theQECS
+theMainWindow->theMainWindowUI:updateDisplay()
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+
+//part 3, elevator has arrived at the floor it is to service
+
+theQECS->aFloorSensor:stop()
+activate theQECS
+activate aFloorSensor
+deactivateafter aFloorSensor
+theQECS->anElevator:ringBell()
+activate anElevator
+anElevator->aBell:ring()
+activate aBell
+deactivateafter aBell
+theQECS->anElevator:openDoor()
+anElevator->anElevatorDoor:open()
+activate anElevatorDoor
+deactivate anElevator
+theQECS->aFloor:openDoor()
+activate aFloor
+aFloor->aFloorDoor:openDoor()
+deactivate aFloor
+activate aFloorDoor
+theQECS->aTimer:start()
+activate aTimer
+deactivate theQECS
+
+
+//part 4, while at a floor, passenger choses a destination and elevator completes its request on the floor
+
+aPassenger->aDestButton: press()
+activate aDestButton
+aDestButton->theMainWindowUI: switchOn()
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+aDestButton->theMainWindow: passengerReq (floorNum, direction)
+deactivate aDestButton
+activate theMainWindow
+theMainWindow->anElevator:addDest()
+activate anElevator
+deactivateafter anElevator
+deactivate theMainWindow
+
+aTimer->theQECS:timeout()
+activate theQECS
+deactivate aTimer
+theQECS->anElevator:ringBell()
+activate anElevator
+anElevator->aBell:ring()
+activate aBell
+deactivateafter aBell
+theQECS->anElevator:closeDoor()
+anElevator->anElevatorDoor:close()
+deactivate anElevatorDoor
+deactivate anElevator
+theQECS->aFloor:closeDoor()
+activate aFloor
+aFloor->aFloorDoor:closeDoor()
+deactivate aFloor
+deactivate aFloorDoor
+theQECS->theMainWindow: updateDestButton()
+activate theMainWindow
+theMainWindow->theMainWindowUI: switchOff()
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+
+//part 5, leaves floor and the cycle continues
+
+theQECS->anElevator:start(dir)
+deactivate theQECS
+activate anElevator
+deactivateafter anElevator
+
+
+
+				============NUMBER 2: HELP ALARM============
+
+DESCRIPTION: This sequence diagram covers the Help Alarm safety feature, It's much less messy than the base case. The only thing I think i should mention is that I have designed the elevator destination pannel in
+	such a way that all the buttons in the elevator are a part of the destination panel, whether it be the door buttons or the help button. so any communications from the help button go through the destination panel.
+	Also, the function "sendEmergMessage(string emergType)" is going to be used for all communication with the ECS about safety systems, so in this case the emergMessage would be "help" and that ECS will respond
+	accordingly. In the next several sequence diagrams, you'll see this function used for other safety features such as door blockage and fire. I chose this instead of having a function for each.  
+
+
+title ECS Sequence Diagram 2 - Help Alarm
+
+participant aPassenger
+participant aHelpButton
+participant theMainWindow
+participant theMainWindowUI
+participant theQECS
+participant buildingSafetyServices
+participant anElevator
+
+
+activecolor #black
+
+aPassenger->aHelpButton:press()
+activate aHelpButton
+aHelpButton->theMainWindowUI:switchOn()
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+aHelpButton->theMainWindow: helpPress()
+deactivate aHelpButton
+activate theMainWindow
+theMainWindow->theQECS: callSafetyService()
+activate theQECS
+deactivate theMainWindow
+theQECS->theMainWindow: displayEmergMessage(emergType)
+activate theMainWindow
+theMainWindow->theMainWindowUI:updateDisplay()
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+theQECS->buildingSafetyServices: callSafetyService (carNum)
+deactivate theQECS
+activate buildingSafetyServices
+buildingSafetyServices->theQECS: respondToCall()
+deactivate buildingSafetyServices
+activate theQECS
+theQECS->anElevator: connectToCar
+deactivate theQECS
+activate anElevator
+deactivateafter anElevator
+
+
+
+
+				============NUMBER 3: DOOR OBSTACLE============
+
+DESCRIPTION: This sequence diagram covers the door obstacle safety feature. when the light sensor detects a blockage, it informs the elevator which sends an emergency message to the ECS, opening both the elevator doors and the 
+	floor doors until the time when the light sensor sends that the blockage is clear, In this use case, I represented the error message being sent again right after which then triggers the elevator to display and play 
+	the warning message. If the obstruction is cleared after the first time it is detected then the warning would not be played. i.e. this is not the best case scenario. Also, the lack of ringBell() functions calls is intentional, 
+	the use case which this sequence diagram is based on takes place after an elevator has already arrived at a floor, rung its bell, and opened its doors. Thus the bell being rung again for blockage calls is redundent as 
+	there is already an audio warning to inform passengers of a blockage. 
+
+title ECS Sequence Diagram 3 - Door Obstacle
+
+participant aSensor
+participant theMainWindow
+participant theQECS
+participant anElevator
+participant aFloor
+participant aFloorDoor
+participant anElevatorDoor
+
+
+activecolor #black
+
+aSensor->theMainWindow:sendObstruction() 
+activate aSensor
+activate theMainWindow
+theMainWindow->theQECS:sendEmergMessage(emergType)
+deactivate theMainWindow
+activate theQECS
+theQECS->anElevator:sendEmergMessage(emergType)
+activate anElevator
+anElevator->aBell: playWarning (emergType)
+activate aBell
+deactivateafter aBell
+theQECS->anElevator:openDoor()
+anElevator->anElevatorDoor:openDoor()
+deactivate anElevator
+deactivate anElevator
+activate anElevatorDoor
+theQECS->aFloor:openDoor()
+deactivate theQECS
+activate aFloor
+aFloor->aFloorDoor:openDoor()
+deactivate aFloor
+activate aFloorDoor
+
+aSensor->theMainWindow:sendObstruction() 
+activate theMainWindow
+theMainWindow->theQECS:sendEmergMessage(emergType)
+deactivate theMainWindow
+activate theQECS
+theQECS->anElevator:sendEmergMessage(emergType)
+activate anElevator
+anElevator->aBell: playWarning (emergType)
+activate aBell
+deactivateafter aBell
+theQECS->anElevator:openDoor()
+anElevator->anElevatorDoor:openDoor()
+deactivate anElevator
+theQECS->aFloor:openDoor()
+deactivate theQECS
+activate aFloor
+aFloor->aFloorDoor:openDoor()
+deactivate aFloor
+
+
+aSensor->theMainWindow:obstructionCleared()
+deactivate aSensor
+activate theMainWindow
+theMainWindow->theQECS:sendEmergMessage(emergType)
+deactivate theMainWindow
+activate theQECS
+theQECS->anElevator:closeDoor()
+activate anElevator
+anElevator->anElevatorDoor:closeDoor()
+deactivate anElevator
+deactivate anElevatorDoor
+theQECS->aFloor:closeDoor()
+deactivate theQECS
+activate aFloor
+aFloor->aFloorDoor:closeDoor()
+deactivate aFloor
+deactivate aFloorDoor
+
+
+
+
+
+				============NUMBER 4: FIRE SIGNAL============
+
+DESCRIPTION: A smoke detector could be anywhere in the building, the system responds the same way, thus I didnt associate the smoke detector object with any spesific elevator or floor. When the ECS gets a fire signal, 
+	all elevators are commanded to move to safe floor, they will display and play audio informing the passengers of the fire, then they immidiately start moving and inform the ECS of their location as usual, one they 
+	arrive at the safe floor, the ECS is notified of their arrivale and both sets of doors are opened. The passengers are then prompted by another message that they have arrived at a safe floor and can disembark.
+	Note that the displayEmergMessage and playWarning functions are used both times, the first time they are called with "fire as the keyword" and the second time they would be called with "safeFloor" as the keyword 
+	and would display the corresponding message. 
+
+
+title ECS Sequence Diagram 4 - Fire Signal
+
+participant aSmokeDetector
+participant theMainWindow
+participant theMainWindowUI
+participant aSensor
+participant theQECS
+participant anElevator
+participant aBell
+
+participant aFloor
+participant aFloorDoor
+participant anElevatorDoor
+
+activecolor #black
+
+aSmokeDetector->theMainWindow: sendFire()
+activate aSmokeDetector
+deactivateafter aSmokeDetector
+activate theMainWindow
+
+theMainWindow->theQECS:sendEmergMessage(emergType)
+activate theQECS
+
+theMainWindow->theMainWindowUI: displayEmergMessage()
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+theQECS->anElevator:sendEmergMessage(emergType)
+activate anElevator
+anElevator->aBell: playWarning (emergType)
+deactivate anElevator
+activate aBell
+deactivateafter aBell
+theQECS->anElevator: start(direction)
+activate anElevator
+deactivateafter anElevator
+deactivate theQECS
+aSensor->theQECS: floorAndLocationUpdate()
+activate aSensor
+deactivateafter aSensor
+activate theQECS
+theQECS->anElevator: updateLocation()
+activate anElevator
+deactivateafter anElevator
+deactivate theQECS
+aSensor->theQECS: floorAndLocationUpdate()
+activate theQECS
+activate aSensor
+deactivateafter aSensor
+theQECS->anElevator: updateLocation()
+activate anElevator
+deactivateafter anElevator
+theQECS->anElevator: stop()
+activate anElevator
+anElevator->aBell: ringBell()
+activate aBell
+deactivateafter aBell
+theQECS->aFloor:openDoor()
+deactivate theQECS
+activate aFloor
+aFloor->aFloorDoor:openDoor()
+deactivate aFloor
+activate aFloorDoor
+anElevator->anElevatorDoor:openDoor()
+activate anElevatorDoor
+
+anElevator->aBell: playWarning(emergType)
+activate aBell
+deactivateafter aBell
+deactivate anElevator
+
+
+
+
+				============NUMBER 5: OVERLOAD============
+
+DESCRIPTION: One of more basic sequence diagrams, the elevator is overweight, so it is prevented from moving until the weight is reduced. the only thing that may not be self explanatory in this one is 
+the sendEmergMessage (emergType) function. the first time it called the emergType would be "overload", then when it is called again alter the emergType would be "overloadClear" indicating that it's ok to move again. 
+This sequence diagram does not include the case where 
+
+title ECS Sequence Diagram 5 - Overload
+
+participant aFloorSensor
+participant theMainWindow
+participant theMainWindowUI
+participant theQECS
+participant anElevator
+participant aBell
+
+
+activecolor #black
+
+aFloorSensor->theMainWindow:sendOverload()
+activate theMainWindow
+theMainWindow->theQECS:sendEmergMessage(emergType)
+activate theQECS
+theMainWindow->theMainWindowUI: displayEmergMessage(emergType)
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+theQECS->anElevator: forceIdle()
+activate anElevator
+deactivate theQECS
+anElevator->aBell: playWarning(emergType)
+deactivate anElevator
+activate aBell
+deactivateafter aBell
+aFloorSensor->theMainWindow:overLoadCleared()
+theMainWindow->theQECS:sendEmergMessage(emergType)
+deactivate theMainWindow
+activate theQECS
+theQECS->anElevator: moveIdle()
+deactivate theQECS
+activate anElevator
+deactivateafter anElevator
+
+
+
+
+
+				============NUMBER 6: POWER OUT============
+
+DESCRIPTION: If the power goes out, the elevator will recive a warning from the control system and will immidiately procede to the ground floor
+
+
+title ECS Sequence Diagram 6 - Power Out
+
+
+
+participant theMainWindow
+participant theMainWindowUI
+participant aSensor
+participant theQECS
+participant anElevator
+participant aBell
+participant aFloor
+participant aFloorDoor
+participant anElevatorDoor
+
+activecolor #black
+
+theMainWindow->theMainWindow:powerOut()
+activate theMainWindow
+theMainWindow->theQECS:sendEmergMessage(emergType)
+activate theQECS
+theMainWindow->theMainWindowUI: displayEmergMessage(emergType)
+deactivate theMainWindow
+activate theMainWindowUI
+deactivateafter theMainWindowUI
+theQECS->anElevator: forceIdle()
+activate anElevator
+anElevator->aBell: playWarning(emergType)
+deactivate anElevator
+activate aBell
+deactivateafter aBell
+
+
+
+theQECS->anElevator: moveIdle()
+theQECS->aSensor:start()
+activate aSensor
+deactivateafter aSensor
+deactivate theQECS
+activate anElevator
+deactivateafter anElevator
+aSensor->theQECS: timeout()
+activate aSensor
+deactivateafter aSensor
+activate theQECS
+theQECS->anElevator: updateLocation()
+activate anElevator
+deactivateafter anElevator
+deactivate theQECS
+aSensor->theQECS: timeout()
+activate theQECS
+activate aSensor
+deactivateafter aSensor
+theQECS->anElevator: updateLocation()
+activate anElevator
+deactivateafter anElevator
+
+theQECS->anElevator: stop()
+activate anElevator
+anElevator->aBell: ringBell()
+activate aBell
+deactivateafter aBell
+theQECS->anElevator:openDoor()
+anElevator->anElevatorDoor:openDoor()
+activate anElevatorDoor
+theQECS->aFloor:openDoor()
+deactivate theQECS
+activate aFloor
+aFloor->aFloorDoor:openDoor()
+deactivate aFloor
+activate aFloorDoor
+
+anElevator->aBell: playWarning(emergType)
+activate aBell
+deactivateafter aBell
+deactivate anElevator
+
+
+
+
+
+
+
